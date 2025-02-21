@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 .idea
+
+# Dont store actual db file.
+mydb.sqlite
