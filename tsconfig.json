@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2020", // Choose your target JavaScript version (es5, es6, es2020, etc.)
+    "module": "commonjs", // Choose your module system (commonjs, esnext, amd, etc.) - commonjs is typical for Node.js
+    "outDir": "./dist", // The directory where compiled JavaScript files will go
+    "strict": true, // Enable strict type checking (recommended)
+    "esModuleInterop": true, // Helps with compatibility between CommonJS and ES modules
+    "skipLibCheck": true, // Skip type checking of declaration files (improves compilation speed)
+    "forceConsistentCasingInFileNames": true // Enforces consistent casing
+  },
+  "include": [
+    "src/**/*.ts" // Include all TypeScript files in the 'src' directory (you'll likely want a 'src' folder)
+  ],
+  "exclude": [
+    "node_modules" // Exclude the node_modules folder
+  ]
+}
