@@ -1,0 +1,14 @@
+
+Add in a method to send an SMS reminder.
+
+DONE - Add in Calendar missed reps coloring. red and green.
+
+Add voice something?
+
+Add in Calories
+
+- Calendar - planned reps weekly.
+
+- Free form text query of DB, How many pushups did I do this week?
+
+

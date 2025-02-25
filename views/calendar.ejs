@@ -41,6 +41,13 @@
         .past-date {
             background-color: lightgrey;
         }
+
+        .completed-daily {
+            background-color: palegreen;
+        }
+        .completed-daily-failed {
+            background-color: #ffb0c9;
+        }
     </style>
 </head>
 <body>
@@ -71,7 +78,7 @@
         if (!repsPlanned || repsPlanned.length === 0) return html;
         html += `<p>
             Planned:
-            <span style="color: rgba(158,3,3,0.5);"> <br>
+            <span style="color: rgb(76,11,11);"> <br>
                 ${repsPlanned.map(rep => `${rep.quantity} ${rep.exerciseName} <br>`).join(' ')}
             </span>
             </p>`;
@@ -88,8 +95,13 @@
         day = date.day;
         const isTodayClass = day === today.getDate() && month === currentMonth && year === currentYear ? 'current-date' : '';
         const isPastClass = new Date(year, month - 1, day + 1) < today ? 'past-date' : '';
+        let isCompletedDailyClass = '';
+        // Color all past days as green or red if completed or failed.
+        if (isPastClass !== '') {
+            isCompletedDailyClass = date.completedDaily === true ? 'completed-daily' : (date.completedDaily === false ? 'completed-daily-failed' : '');
+        }
     %>
-    <td class="<%= isPastClass %> <%= isTodayClass %> ">
+    <td class="<%= isCompletedDailyClass %> <%= isPastClass %> <%= isTodayClass %> ">
         <div class="day-number"><%= day || '' %></div>
         <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
     </td>

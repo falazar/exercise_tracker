@@ -129,16 +129,17 @@ app.post('/users', async (req, res) => {
 
 // Serve the Calendar file.
 app.get('/exerciseReps', async (req, res) => {
-  // Get a list of days and data for this current month.
+  // Get the username from query parameters or default to "james"
+  const username = (req.query.username || "james") as string;
 
-  // hardcoded for now.
-  req.query.username = "james";
-  const username = req.query.username as string;
-  const month = new Date().getMonth() + 1;
-  const year = new Date().getFullYear();
+  // Get the month and year from query parameters or default to the current month and year
+  const month = req.query.month ? parseInt(req.query.month as string, 10) : new Date().getMonth() + 1;
+  const year = req.query.year ? parseInt(req.query.year as string, 10) : new Date().getFullYear();
+
+  // Get a list of days and data for the specified month and year
   const data = await getExerciseMonthData(username, month, year);
 
-  // Pass our data set to html frontend.
+  // Render the calendar view with the data
   res.render('calendar', { username, month, year, days: data });
 });
 
@@ -305,6 +306,7 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
   // STEP 1: Build up a month of days.
   // Get amount of days in this month.
   const daysInMonth = new Date(year, month, 0).getDate();
+  console.log("DEBUG4: daysInMonth", daysInMonth);
   const days = new Array(daysInMonth).fill(0).map((_, i) => i + 1);
   // Get the day of week for each day map into our data.
   const dayOfWeek = days.map(day => new Date(year, month, day).getDay());
@@ -313,6 +315,7 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
   const startDay = dayOfWeek[0];
   const daysToPad = new Array(startDay).fill(0);
   const paddedDays = [...daysToPad, ...days];
+  // console.log("DEBUG4: paddedDays", paddedDays);
 
   // STEP 2: Query to get all done reps data for month.
   const db = await getDb(); // TODO move up out.
@@ -330,22 +333,49 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
   const params2 = [userName, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`];
   const exerciseRepsPlanned = await db.all(sql2, params2);
   const fullQuery2 = sql2.replace(/\?/g, () => JSON.stringify(params2.shift()));
-  console.log("DEBUG6: fullQuery2 =", fullQuery2);
+  // console.log("DEBUG6: fullQuery2 =", fullQuery2);
   // console.log("DEBUG6: exerciseRepsPlanned=", exerciseRepsPlanned);
 
   // STEP 4: Loop and match exercise to each date now.
+  console.log("DEBUG6: month", month);
   const data = paddedDays.map((day, index) => {
     if (day === 0) {
       return { day, reps: [] };
     }
-    const currMonth = new Date().getMonth();
-    const currYear = new Date().getFullYear();
-    const date = new Date(currYear, currMonth, day);
+    const date = new Date(year, month-1, day);
     const dateString = date.toISOString().split('T')[0];
-    // console.log("DEBUG4: dateString", dateString);
+    console.log("\nDEBUG4: dateString", dateString);
     const reps = exerciseReps.filter(rep => rep.timeDone.split('T')[0] === dateString);
     const repsPlanned = exerciseRepsPlanned.filter(rep => rep.datePlanned === dateString);
-    return { day, reps, repsPlanned };
+
+    // TODO make method.
+    // Make a temp hash of exerciseName to quantity.
+    const exerciseHash = reps.reduce((hash, { exerciseName, quantity }) => {
+      hash[exerciseName] = (hash[exerciseName] || 0) + quantity;
+      return hash;
+    }, {});
+    const plannedExerciseHash = repsPlanned.reduce((hash, { exerciseName, quantity }) => {
+      hash[exerciseName] = (hash[exerciseName] || 0) + quantity;
+      return hash;
+    }, {});
+    // console.log("DEBUG7: exerciseHash", exerciseHash);
+    // console.log("DEBUG7: plannedExerciseHash", plannedExerciseHash);
+
+    // For every planned rep, subtract out the total reps done and see if goal achieved.
+    const completedPlanned = Object.keys(plannedExerciseHash).map(exerciseName => {
+      const plannedQuantity = plannedExerciseHash[exerciseName] || 0;
+      const doneQuantity = exerciseHash[exerciseName] || 0;
+      return { exerciseName, plannedQuantity, doneQuantity, remaining: plannedQuantity - doneQuantity };
+    });
+    console.log("DEBUG8: completedPlanned", completedPlanned);
+    // If we had any scheduled reps and all are done, then we completed the daily goal.
+    let completedDaily = undefined;
+    if (Object.keys(plannedExerciseHash).length > 0) {
+      completedDaily = !completedPlanned.some(({ remaining }) => remaining > 0);
+    }
+    console.log("DEBUG8: completedDaily=", completedDaily);
+
+    return { day, reps, repsPlanned, completedPlanned, completedDaily };
   });
   // console.log("DEBUG6: data", data);
 
