@@ -300,11 +300,12 @@ async function insertExerciseRepGemini(userName: string, exerciseText: string) {
   }
 }
 
-
 // Grab all exercise data for the month and prep for display.
 async function getExerciseMonthData(userName: string, month: number, year: number) {
   // STEP 1: Build up a month of days.
-  const days = new Array(31).fill(0).map((_, i) => i + 1);
+  // Get amount of days in this month.
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = new Array(daysInMonth).fill(0).map((_, i) => i + 1);
   // Get the day of week for each day map into our data.
   const dayOfWeek = days.map(day => new Date(year, month, day).getDay());
 
@@ -313,18 +314,26 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
   const daysToPad = new Array(startDay).fill(0);
   const paddedDays = [...daysToPad, ...days];
 
-  // STEP 2: Query to get all data for month.
-  const db = await getDb();
+  // STEP 2: Query to get all done reps data for month.
+  const db = await getDb(); // TODO move up out.
   const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ?';
   // Add params but pad any month with zero here.
   const params = [userName, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`];
   const exerciseReps = await db.all(sql, params);
   const fullQuery = sql.replace(/\?/g, () => JSON.stringify(params.shift()));
   console.log("DEBUG5: fullQuery =", fullQuery);
+  // console.log("DEBUG5: exerciseReps=", exerciseReps);
 
-  console.log("DEBUG4: exerciseReps", exerciseReps);
+  // STEP 3: Query to get all planned reps data for month.
+  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE userName=? AND datePlanned BETWEEN ? AND ?';
+  // Add params but pad any month with zero here.
+  const params2 = [userName, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`];
+  const exerciseRepsPlanned = await db.all(sql2, params2);
+  const fullQuery2 = sql2.replace(/\?/g, () => JSON.stringify(params2.shift()));
+  console.log("DEBUG6: fullQuery2 =", fullQuery2);
+  // console.log("DEBUG6: exerciseRepsPlanned=", exerciseRepsPlanned);
 
-  // STEP 3: Loop and match exercise to each date now.
+  // STEP 4: Loop and match exercise to each date now.
   const data = paddedDays.map((day, index) => {
     if (day === 0) {
       return { day, reps: [] };
@@ -335,9 +344,10 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
     const dateString = date.toISOString().split('T')[0];
     // console.log("DEBUG4: dateString", dateString);
     const reps = exerciseReps.filter(rep => rep.timeDone.split('T')[0] === dateString);
-    return { day, reps };
+    const repsPlanned = exerciseRepsPlanned.filter(rep => rep.datePlanned === dateString);
+    return { day, reps, repsPlanned };
   });
-  // console.log("DEBUG4: data", data);
+  // console.log("DEBUG6: data", data);
 
   return data;
 }

@@ -27,7 +27,7 @@
         }
 
         .current-date {
-            background-color: lightgreen;
+            background-color: #7277f5;
         }
 
         .day-number {
@@ -36,6 +36,10 @@
 
         .reps-info {
             text-align: left;
+        }
+
+        .past-date {
+            background-color: lightgrey;
         }
     </style>
 </head>
@@ -54,27 +58,42 @@
         <th>Sat</th>
     </tr>
     <%
-    function renderReps(reps) {
-        if (!reps[0]) return '';
-        return `
-    <ul>
-      ${reps.map(rep => `<li>${rep.quantity} ${rep.exerciseName}</li>`).join('')}
-    </ul>
-  `;
+    // Show our layout for done and planned exercises now.
+    function renderReps(reps, repsPlanned) {
+        let html = '';
+        if (reps && reps.length > 0) {
+            html = `
+                <ul>
+                  ${reps.map(rep => `<li>${rep.quantity} ${rep.exerciseName}</li>`).join('')}
+                </ul>`;
+        }
+
+        if (!repsPlanned || repsPlanned.length === 0) return html;
+        html += `<p>
+            Planned:
+            <span style="color: rgba(158,3,3,0.5);"> <br>
+                ${repsPlanned.map(rep => `${rep.quantity} ${rep.exerciseName} <br>`).join(' ')}
+            </span>
+            </p>`;
+
+        return html;
     }
 
     cnt = 0;
-    const today = new Date().getDate();
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+
     days.forEach(date => {
         day = date.day;
-        const isToday = day === today ? 'current-date' : '';
+        const isTodayClass = day === today.getDate() && month === currentMonth && year === currentYear ? 'current-date' : '';
+        const isPastClass = new Date(year, month - 1, day + 1) < today ? 'past-date' : '';
     %>
-    <td class="<%= isToday %>">
+    <td class="<%= isPastClass %> <%= isTodayClass %> ">
         <div class="day-number"><%= day || '' %></div>
-        <div class="reps-info"><%- renderReps(date.reps) %></div>
+        <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
     </td>
-    <%
-        cnt++;
+    <% cnt++;
     if (cnt % 7 === 0) { %>
         </tr>
     <tr>
