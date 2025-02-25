@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Reps Calendar</title>
+    <style>
+        #calendarTable, #calendarTable td, #calendarTable th {
+            border: 1px solid black;
+            height: 70px;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        #calendarTable {
+            border-collapse: collapse;
+            width: 70%;
+        }
+
+        #calendarTable td, #calendarTable th {
+            width: calc(100% / 7);
+        }
+
+        #calendarTable th {
+            background-color: lightblue;
+            text-align: center;
+        }
+
+        .current-date {
+            background-color: lightgreen;
+        }
+
+        .day-number {
+            text-align: right;
+        }
+
+        .reps-info {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+<h1>Exercise Calendar for You.</h1>
+
+<h3> Month: <%= new Date(year, month - 1).toLocaleString('default', {month: 'long'}) %> <%= year %> </h3>
+<table id="calendarTable">
+    <tr>
+        <th>Sun</th>
+        <th>Mon</th>
+        <th>Tue</th>
+        <th>Wed</th>
+        <th>Thu</th>
+        <th>Fri</th>
+        <th>Sat</th>
+    </tr>
+    <%
+    function renderReps(reps) {
+        if (!reps[0]) return '';
+        return `
+    <ul>
+      ${reps.map(rep => `<li>${rep.quantity} ${rep.exerciseName}</li>`).join('')}
+    </ul>
+  `;
+    }
+
+    cnt = 0;
+    const today = new Date().getDate();
+    days.forEach(date => {
+        day = date.day;
+        const isToday = day === today ? 'current-date' : '';
+    %>
+    <td class="<%= isToday %>">
+        <div class="day-number"><%= day || '' %></div>
+        <div class="reps-info"><%- renderReps(date.reps) %></div>
+    </td>
+    <%
+        cnt++;
+    if (cnt % 7 === 0) { %>
+        </tr>
+    <tr>
+        <% }
+        }) %>
+</table>
+
+
+<form action="/exerciseReps3" method="post">
+    <label for="userName">User Name: James </label>
+    <input type="hidden" id="userName" name="userName" value="james" required><br><br>
+    What exercise did you do? <input type="text" id="exerciseText" name="exerciseText" required><br><br>
+    <button type="submit">Submit</button>
+</form>
+</body>
+</html>
