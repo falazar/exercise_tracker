@@ -1,14 +1,23 @@
 
+DONE - Add in Calendar missed reps coloring. red and green.
+DONE - Show next and previous month days on calendar.
+
+
+TODO LIST MORE:
+Cleanups.
+
+Show prev next links on calendar.
+
 Add in a method to send an SMS reminder.
 
-DONE - Add in Calendar missed reps coloring. red and green.
+Add strikeout for each exercise done.
 
 Add voice something?
 
+Calendar - planned reps weekly.
+
 Add in Calories
 
-- Calendar - planned reps weekly.
-
-- Free form text query of DB, How many pushups did I do this week?
+Free form text query of DB, How many pushups did I do this week?
 
 

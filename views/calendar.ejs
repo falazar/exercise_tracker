@@ -45,6 +45,7 @@
         .completed-daily {
             background-color: palegreen;
         }
+
         .completed-daily-failed {
             background-color: #ffb0c9;
         }
@@ -91,10 +92,13 @@
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
 
+    // Loop over every calendar day and display.
     days.forEach(date => {
-        day = date.day;
-        const isTodayClass = day === today.getDate() && month === currentMonth && year === currentYear ? 'current-date' : '';
-        const isPastClass = new Date(year, month - 1, day + 1) < today ? 'past-date' : '';
+        const dateOn = date.date;
+        // console.log("DEBUG9: dateOn: ", dateOn);
+        const isTodayClass = dateOn.getDate() === today.getDate() && dateOn.getMonth()+1 === currentMonth && dateOn.getFullYear() === currentYear ? 'current-date' : '';
+        // console.log("DEBUG9:  month day year = ", dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
+        const isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
         let isCompletedDailyClass = '';
         // Color all past days as green or red if completed or failed.
         if (isPastClass !== '') {
@@ -102,7 +106,7 @@
         }
     %>
     <td class="<%= isCompletedDailyClass %> <%= isPastClass %> <%= isTodayClass %> ">
-        <div class="day-number"><%= day || '' %></div>
+        <div class="day-number"><%= dateOn.getDate() || '' %></div>
         <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
     </td>
     <% cnt++;

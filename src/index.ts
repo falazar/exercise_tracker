@@ -6,6 +6,7 @@ import { ChatPromptTemplate, PromptTemplate } from "@langchain/core/prompts";
 import dotenv from 'dotenv';
 import { createSqlQueryChain } from "langchain/dist/chains/sql_db";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+const nodemailer = require('nodemailer');
 
 dotenv.config();
 
@@ -237,6 +238,19 @@ app.post('/exerciseReps3', async (req, res) => {
   }
 });
 
+// Sample for SMS sending.
+app.get('/exampleSMS', async (req, res) => {
+  try {
+    // const response = await chain.call({ product: "widgets" });
+    const response = await sendSMS('5127092825', 'Hello World falazar 3 via email.');
+
+    res.json({ message: 'ok' });
+  } catch (error) {
+    console.error("Error processing SMS request:", error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
 // Insert a new exercise repetition using Gemini 2.0 Functions.
 async function insertExerciseRepGemini(userName: string, exerciseText: string) {
   console.log("DEBUG2: userName", userName);
@@ -305,46 +319,55 @@ async function insertExerciseRepGemini(userName: string, exerciseText: string) {
 async function getExerciseMonthData(userName: string, month: number, year: number) {
   // STEP 1: Build up a month of days.
   // Get amount of days in this month.
+  console.log("getExerciseMonthData: month year = ", month, year);
   const daysInMonth = new Date(year, month, 0).getDate();
   console.log("DEBUG4: daysInMonth", daysInMonth);
   const days = new Array(daysInMonth).fill(0).map((_, i) => i + 1);
+
+  // STEP 2: Pad front and end days on calendar. make method just to get dates.
+  console.log("DEBUG1: Making calendar days now.");
   // Get the day of week for each day map into our data.
-  const dayOfWeek = days.map(day => new Date(year, month, day).getDay());
+  const startDay = new Date(year, month-1, 1).getDay();
+  console.log("DEBUG4: startDay", startDay);
 
-  // Pad front with number of days until start day.
-  const startDay = dayOfWeek[0];
-  const daysToPad = new Array(startDay).fill(0);
-  const paddedDays = [...daysToPad, ...days];
-  // console.log("DEBUG4: paddedDays", paddedDays);
+  const daysToPad = Array.from({ length: startDay }, (_, i) => -startDay + i + 1);
+  let paddedDays = [...daysToPad, ...days];
+  // Pad end with number of days until end day.
+  const endDay = new Date(year, month, 0).getDay();
+  // console.log("DEBUG4: endDay", endDay);
+  const daysToPadEnd = Array.from({ length: 6 - endDay }, (_, i) => i + 1 + daysInMonth);
+  paddedDays = [...paddedDays, ...daysToPadEnd];
+  console.log("DEBUG4: DONE paddedDays = ", paddedDays);
+  const startDate = new Date(year, month-1, 1 - startDay);
+  const endDate = new Date(year, month-1, daysInMonth + (6 - endDay));
+  console.log("DEBUG4: startDate", startDate);
+  console.log("DEBUG4: endDate", endDate);
+  // todo use these instead.
 
-  // STEP 2: Query to get all done reps data for month.
+  // STEP 3: Query to get all done reps data for month.
   const db = await getDb(); // TODO move up out.
   const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ?';
-  // Add params but pad any month with zero here.
-  const params = [userName, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`];
+  const params = [userName, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
   const exerciseReps = await db.all(sql, params);
   const fullQuery = sql.replace(/\?/g, () => JSON.stringify(params.shift()));
   console.log("DEBUG5: fullQuery =", fullQuery);
   // console.log("DEBUG5: exerciseReps=", exerciseReps);
 
-  // STEP 3: Query to get all planned reps data for month.
+  // STEP 4: Query to get all planned reps data for month.
   const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE userName=? AND datePlanned BETWEEN ? AND ?';
-  // Add params but pad any month with zero here.
-  const params2 = [userName, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`];
+  const params2 = [userName, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
   const exerciseRepsPlanned = await db.all(sql2, params2);
   const fullQuery2 = sql2.replace(/\?/g, () => JSON.stringify(params2.shift()));
-  // console.log("DEBUG6: fullQuery2 =", fullQuery2);
+  console.log("DEBUG6: fullQuery2 =", fullQuery2);
   // console.log("DEBUG6: exerciseRepsPlanned=", exerciseRepsPlanned);
 
-  // STEP 4: Loop and match exercise to each date now.
-  console.log("DEBUG6: month", month);
+  // STEP 5: Loop and match exercise to each date now.
+  // console.log("DEBUG6: month", month);
   const data = paddedDays.map((day, index) => {
-    if (day === 0) {
-      return { day, reps: [] };
-    }
+    // TODO MAKE METHOD????
     const date = new Date(year, month-1, day);
     const dateString = date.toISOString().split('T')[0];
-    console.log("\nDEBUG4: dateString", dateString);
+    // console.log("\nDEBUG4: dateString", dateString);
     const reps = exerciseReps.filter(rep => rep.timeDone.split('T')[0] === dateString);
     const repsPlanned = exerciseRepsPlanned.filter(rep => rep.datePlanned === dateString);
 
@@ -367,21 +390,52 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
       const doneQuantity = exerciseHash[exerciseName] || 0;
       return { exerciseName, plannedQuantity, doneQuantity, remaining: plannedQuantity - doneQuantity };
     });
-    console.log("DEBUG8: completedPlanned", completedPlanned);
+    // console.log("DEBUG8: completedPlanned", completedPlanned);
     // If we had any scheduled reps and all are done, then we completed the daily goal.
     let completedDaily = undefined;
     if (Object.keys(plannedExerciseHash).length > 0) {
       completedDaily = !completedPlanned.some(({ remaining }) => remaining > 0);
     }
-    console.log("DEBUG8: completedDaily=", completedDaily);
+    // console.log("DEBUG8: completedDaily=", completedDaily);
 
-    return { day, reps, repsPlanned, completedPlanned, completedDaily };
+    return { date, reps, repsPlanned, completedPlanned, completedDaily };
   });
   // console.log("DEBUG6: data", data);
 
   return data;
 }
 
+// Example for SMS sending.
+async function sendSMS(toNumber: string, message: string) {
+  // Create a transporter object using SMTP transport
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: 'falazar23@gmail.com',
+      pass: process.env.GMAIL_APP_PASSWORD
+    }
+  });
+
+  // Define the email options
+  const mailOptions = {
+    from: 'falazar23@gmail.com',
+    to: '5127092825@tmomail.net',
+    // to: `${toNumber}@tmomail.net`,
+    subject: 'Workout Reminder3',
+    // text: 'This is a test message sent to a Sprint phone number via email.',
+    text: message
+  };
+
+  // Send the message
+  transporter.sendMail(mailOptions, (error: any, info: { response: string; }) => {
+    if (error) {
+      return console.log(error);
+    }
+    console.log('SMS Message sent: ' + info.response);
+  });
+
+  return true;
+}
 
 // Executable function code. Put it in a map keyed by the function name
 // so that you can call it once you get the name string from the model.
