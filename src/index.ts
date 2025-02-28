@@ -346,7 +346,7 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
 
   // STEP 3: Query to get all done reps data for month.
   const db = await getDb(); // TODO move up out.
-  const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ?';
+  const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ? order by timeDone, exerciseName';
   const params = [userName, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
   const exerciseReps = await db.all(sql, params);
   const fullQuery = sql.replace(/\?/g, () => JSON.stringify(params.shift()));
@@ -354,7 +354,7 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
   // console.log("DEBUG5: exerciseReps=", exerciseReps);
 
   // STEP 4: Query to get all planned reps data for month.
-  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE userName=? AND datePlanned BETWEEN ? AND ?';
+  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE userName=? AND datePlanned BETWEEN ? AND ? order by datePlanned, exerciseName';
   const params2 = [userName, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
   const exerciseRepsPlanned = await db.all(sql2, params2);
   const fullQuery2 = sql2.replace(/\?/g, () => JSON.stringify(params2.shift()));

@@ -96,9 +96,15 @@
     days.forEach(date => {
         const dateOn = date.date;
         // console.log("DEBUG9: dateOn: ", dateOn);
-        const isTodayClass = dateOn.getDate() === today.getDate() && dateOn.getMonth()+1 === currentMonth && dateOn.getFullYear() === currentYear ? 'current-date' : '';
-        // console.log("DEBUG9:  month day year = ", dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
-        const isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
+        const isTodayClass = dateOn.getDate() === today.getDate()
+            && dateOn.getMonth()+1 === currentMonth
+            && dateOn.getFullYear() === currentYear ? 'current-date' : '';
+        console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
+        console.log("DEBUG9: isTodayClass = ", isTodayClass);
+        let isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
+        if (isTodayClass !== '') {
+            isPastClass = '';
+        }
         let isCompletedDailyClass = '';
         // Color all past days as green or red if completed or failed.
         if (isPastClass !== '') {
