@@ -10,6 +10,8 @@ Show prev next links on calendar.
 
 Add in a method to send an SMS reminder.
 
+Add confirmation popup instead of new page.
+
 Add strikeout for each exercise done.
 
 Add voice something?

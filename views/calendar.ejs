@@ -52,7 +52,7 @@
     </style>
 </head>
 <body>
-<h1>Exercise Calendar for You.</h1>
+<h1>Exercise Calendar</h1>
 
 <h3> Month: <%= new Date(year, month - 1).toLocaleString('default', {month: 'long'}) %> <%= year %> </h3>
 <table id="calendarTable">
@@ -99,8 +99,7 @@
         const isTodayClass = dateOn.getDate() === today.getDate()
             && dateOn.getMonth()+1 === currentMonth
             && dateOn.getFullYear() === currentYear ? 'current-date' : '';
-        console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
-        console.log("DEBUG9: isTodayClass = ", isTodayClass);
+        // console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
         let isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
         if (isTodayClass !== '') {
             isPastClass = '';
@@ -124,7 +123,7 @@
 </table>
 
 
-<form action="/exerciseReps3" method="post">
+<form action="/exerciseReps" method="post">
     <label for="userName">User Name: James </label>
     <input type="hidden" id="userName" name="userName" value="james" required><br><br>
     What exercise did you do? <input type="text" id="exerciseText" name="exerciseText" required><br><br>
