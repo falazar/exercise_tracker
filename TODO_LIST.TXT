@@ -4,22 +4,27 @@ DONE - Show next and previous month days on calendar.
 
 
 TODO LIST MORE:
-Cleanups.
+Add strikeout for each exercise done.
 
-Show prev next links on calendar.
+Calendar - planned reps weekly.
 
 Add in a method to send an SMS reminder.
 
 Add confirmation popup instead of new page.
 
-Add strikeout for each exercise done.
+Show prev next links on calendar.
+
+Delete an item, with confirm popup, for a mistake
+
+Start pulling username to default only at program start
+
+Add port to expose to the outside world.  phone and tvcomputer.
 
 Add voice something?
-
-Calendar - planned reps weekly.
 
 Add in Calories
 
 Free form text query of DB, How many pushups did I do this week?
 
+Add login page.
 

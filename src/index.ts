@@ -88,10 +88,10 @@ app.get('/exerciseReps', async (req, res) => {
 app.post('/exerciseReps', async (req, res) => {
   console.log("DEBUG1: Gemini Tool insert version");
   // console.log("DEBUG1: Received request:", req.body);
-  const { userName, exerciseText } = req.body;
+  const { username, exerciseText } = req.body;
 
   try {
-    const response = await insertExerciseRepGemini(userName, exerciseText);
+    const response = await insertExerciseRepGemini(username, exerciseText);
     res.status(201).json({ message: response });
   } catch (error) {
     console.error("Error inserting exercise record:", error);
@@ -113,7 +113,7 @@ app.get('/exampleSMS', async (req, res) => {
 });
 
 // Insert a new exercise repetition using Gemini 2.0 Functions.
-async function insertExerciseRepGemini(userName: string, exerciseText: string) {
+async function insertExerciseRepGemini(username: string, exerciseText: string) {
   console.log("DEBUG3: GoogleGenerativeAI imported");
   // Access your API key as an environment variable (see "Set up your API key" above)
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -132,7 +132,7 @@ async function insertExerciseRepGemini(userName: string, exerciseText: string) {
   console.log("DEBUG4: STEP 2: Starting chat. ");
   const chat = generativeModel.startChat();
   // const prompt = `Username is Robin. Today is ${ new Date().toISOString() }  I just completed 30 mins swimming.`;
-  const prompt = `Username is ${userName}. Today is ${new Date().toISOString()}  Exercise Text: ${exerciseText}`;
+  const prompt = `Username is ${username}. Today is ${new Date().toISOString()}  Exercise Text: ${exerciseText}`;
   console.log("DEBUG4: Generated prompt:", prompt);
   // Send the message to the model.
   const result = await chat.sendMessage(prompt);
@@ -169,7 +169,7 @@ async function insertExerciseRepGemini(userName: string, exerciseText: string) {
 }
 
 // Grab all exercise data for the month and prep for display.
-async function getExerciseMonthData(userName: string, month: number, year: number) {
+async function getExerciseMonthData(username: string, month: number, year: number) {
   // STEP 1: Build up a month of days.
   // Get amount of days in this month.
   console.log("getExerciseMonthData: month year = ", month, year);
@@ -200,15 +200,15 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
   // STEP 3: Query to get all done reps data for month.
   const db = await getDb(); // TODO move up out.
   const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ? order by timeDone, exerciseName';
-  const params = [userName, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
+  const params = [username, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
   const exerciseReps = await db.all(sql, params);
   const fullQuery = sql.replace(/\?/g, () => JSON.stringify(params.shift()));
   console.log("DEBUG5: fullQuery =", fullQuery);
   // console.log("DEBUG5: exerciseReps=", exerciseReps);
 
   // STEP 4: Query to get all planned reps data for month.
-  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE userName=? AND datePlanned BETWEEN ? AND ? order by datePlanned, exerciseName';
-  const params2 = [userName, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
+  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE username=? AND datePlanned BETWEEN ? AND ? order by datePlanned, exerciseName';
+  const params2 = [username, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
   const exerciseRepsPlanned = await db.all(sql2, params2);
   const fullQuery2 = sql2.replace(/\?/g, () => JSON.stringify(params2.shift()));
   console.log("DEBUG6: fullQuery2 =", fullQuery2);
@@ -261,13 +261,13 @@ async function getExerciseMonthData(userName: string, month: number, year: numbe
 // Executable function code. Put it in a map keyed by the function name
 // so that you can call it once you get the name string from the model.
 const functions = {
-  insertExerciseRep: ({ userName, exerciseName, quantity, timeDone }: {
-    userName: string,
+  insertExerciseRep: ({ username, exerciseName, quantity, timeDone }: {
+    username: string,
     exerciseName: string,
     quantity: number,
     timeDone: string
   }) => {
-    return insertExerciseRep(userName, exerciseName, quantity, timeDone);
+    return insertExerciseRep(username, exerciseName, quantity, timeDone);
   }
 };
 
@@ -284,11 +284,11 @@ async function setLightValues(brightness: number, colorTemp: string) {
   };
 }
 
-async function insertExerciseRep(userName: string, exerciseName: string, quantity: number, timeDone: string) {
+async function insertExerciseRep(username: string, exerciseName: string, quantity: number, timeDone: string) {
   const db = await getDb();
   const result = await db.run(
     'INSERT INTO exerciseReps (userName, exerciseName, quantity, timeDone) VALUES (?, ?, ?, ?)',
-    [userName, exerciseName, quantity, timeDone]
+    [username, exerciseName, quantity, timeDone]
   );
   console.log('SQL Exercise record created.');
 }
@@ -300,7 +300,7 @@ const insertExerciseRepFunctionDeclaration = {
     type: "OBJECT",
     description: "Insert an exercise repetition record into the database.",
     properties: {
-      userName: {
+      username: {
         type: "STRING",
         description: "The name of the user performing the exercise.",
       },
@@ -317,7 +317,7 @@ const insertExerciseRepFunctionDeclaration = {
         description: "The time when the exercise was performed. Date and time format. If no date given, use today, if no time given use current time. ",
       },
     },
-    required: ["userName", "exerciseName", "quantity", "timeDone"],
+    required: ["username", "exerciseName", "quantity", "timeDone"],
   },
 }
 
@@ -357,7 +357,7 @@ async function sendSMS(toNumber: string, message: string) {
 
 /*
 [1] DEBUG1: Received request: {
-[1]   userName: 'james',
+[1]   username: 'james',
 [1]   exerciseName: 'pushups',
 [1]   quantity: '50',
 [1]   timeDone: '2025-02-21T16:46'

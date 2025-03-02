@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exercise Reps Calendar</title>
     <style>
+        /* Main page container. */
+        .container {
+            display: flex;
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        /* Make the calendar table take up the remaining space */
+        .container > div:first-child {
+            flex-grow: 1;
+        }
+
         #calendarTable, #calendarTable td, #calendarTable th {
             border: 1px solid black;
             height: 70px;
@@ -14,7 +26,7 @@
 
         #calendarTable {
             border-collapse: collapse;
-            width: 70%;
+            width: 100%;
         }
 
         #calendarTable td, #calendarTable th {
@@ -49,85 +61,102 @@
         .completed-daily-failed {
             background-color: #ffb0c9;
         }
+
+        /* Ensure the height adjusts to the content and shrink to fit the content */
+        #exerciseFormContainer {
+            border: 1px solid black;
+            padding: 10px;
+            margin-left: 20px;
+            margin-top: 100px;
+            height: auto;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
-<h1>Exercise Calendar</h1>
+<div class="container">
 
-<h3> Month: <%= new Date(year, month - 1).toLocaleString('default', {month: 'long'}) %> <%= year %> </h3>
-<table id="calendarTable">
-    <tr>
-        <th>Sun</th>
-        <th>Mon</th>
-        <th>Tue</th>
-        <th>Wed</th>
-        <th>Thu</th>
-        <th>Fri</th>
-        <th>Sat</th>
-    </tr>
-    <%
-    // Show our layout for done and planned exercises now.
-    function renderReps(reps, repsPlanned) {
-        let html = '';
-        if (reps && reps.length > 0) {
-            html = `
+    <div>
+    <h1>Exercise Calendar</h1>
+
+    <h3> Month: <%= new Date(year, month - 1).toLocaleString('default', {month: 'long'}) %> <%= year %> </h3>
+    <table id="calendarTable">
+        <tr>
+            <th>Sun</th>
+            <th>Mon</th>
+            <th>Tue</th>
+            <th>Wed</th>
+            <th>Thu</th>
+            <th>Fri</th>
+            <th>Sat</th>
+        </tr>
+        <%
+        // Show our layout for done and planned exercises now.
+        function renderReps(reps, repsPlanned) {
+            let html = '';
+            if (reps && reps.length > 0) {
+                html = `
                 <ul>
                   ${reps.map(rep => `<li>${rep.quantity} ${rep.exerciseName}</li>`).join('')}
                 </ul>`;
-        }
+            }
 
-        if (!repsPlanned || repsPlanned.length === 0) return html;
-        html += `<p>
+            if (!repsPlanned || repsPlanned.length === 0) return html;
+            html += `<p>
             Planned:
             <span style="color: rgb(76,11,11);"> <br>
                 ${repsPlanned.map(rep => `${rep.quantity} ${rep.exerciseName} <br>`).join(' ')}
             </span>
             </p>`;
 
-        return html;
-    }
+            return html;
+        }
 
-    cnt = 0;
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
+        cnt = 0;
+        const today = new Date();
+        const currentMonth = today.getMonth() + 1;
+        const currentYear = today.getFullYear();
 
-    // Loop over every calendar day and display.
-    days.forEach(date => {
-        const dateOn = date.date;
-        // console.log("DEBUG9: dateOn: ", dateOn);
-        const isTodayClass = dateOn.getDate() === today.getDate()
-            && dateOn.getMonth()+1 === currentMonth
+        // Loop over every calendar day and display.
+        days.forEach(date => {
+            const dateOn = date.date;
+            // console.log("DEBUG9: dateOn: ", dateOn);
+            const isTodayClass = dateOn.getDate() === today.getDate()
+            && dateOn.getMonth() + 1 === currentMonth
             && dateOn.getFullYear() === currentYear ? 'current-date' : '';
-        // console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
-        let isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
-        if (isTodayClass !== '') {
-            isPastClass = '';
-        }
-        let isCompletedDailyClass = '';
-        // Color all past days as green or red if completed or failed.
-        if (isPastClass !== '') {
-            isCompletedDailyClass = date.completedDaily === true ? 'completed-daily' : (date.completedDaily === false ? 'completed-daily-failed' : '');
-        }
-    %>
-    <td class="<%= isCompletedDailyClass %> <%= isPastClass %> <%= isTodayClass %> ">
-        <div class="day-number"><%= dateOn.getDate() || '' %></div>
-        <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
-    </td>
-    <% cnt++;
-    if (cnt % 7 === 0) { %>
-        </tr>
-    <tr>
-        <% }
-        }) %>
-</table>
+            // console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
+            let isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
+            if (isTodayClass !== '') {
+                isPastClass = '';
+            }
+            let isCompletedDailyClass = '';
+            // Color all past days as green or red if completed or failed.
+            if (isPastClass !== '') {
+                isCompletedDailyClass = date.completedDaily === true ? 'completed-daily' : (date.completedDaily === false ? 'completed-daily-failed' : '');
+            }
+        %>
+        <td class="<%= isCompletedDailyClass %> <%= isPastClass %> <%= isTodayClass %> ">
+            <div class="day-number"><%= dateOn.getDate() || '' %></div>
+            <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
+        </td>
+        <% cnt++;
+        if (cnt % 7 === 0) { %>
+            </tr>
+        <tr>
+            <% }
+            }) %>
+    </table>
+    </div>
 
-
-<form action="/exerciseReps" method="post">
-    <label for="userName">User Name: James </label>
-    <input type="hidden" id="userName" name="userName" value="james" required><br><br>
-    What exercise did you do? <input type="text" id="exerciseText" name="exerciseText" required><br><br>
-    <button type="submit">Submit</button>
-</form>
+    <div id="exerciseFormContainer">
+        <form action="/exerciseReps" method="post">
+            <label for="username">Username: James </label>
+            <input type="hidden" id="username" name="username" value="james" required><br><br>
+            What exercise did you do? <input type="text" id="exerciseText" name="exerciseText" required><br>
+            Ex: I biked for 20 minutes, or I did 50 pushups at 8am<br>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</div>
 </body>
 </html>
