@@ -112,6 +112,110 @@ app.get('/exampleSMS', async (req, res) => {
   }
 });
 
+// Grab all exercise data for the month and prep for display.
+async function getExerciseMonthData(username: string, month: number, year: number) {
+  console.log("getExerciseMonthData: month year = ", month, year);
+
+  // STEP 1: Get start and end dates that show on a calendar page.
+  const startDay = new Date(year, month - 1, 1).getDay();
+  const startDate = new Date(year, month - 1, 1 - startDay);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const endDay = new Date(year, month, 0).getDay();
+  const endDate = new Date(year, month - 1, daysInMonth + (6 - endDay));
+  console.log("DEBUG4: startDate", startDate);
+  console.log("DEBUG4: endDate", endDate);
+
+  // STEP 3: Query to get all done reps data for month.
+  const db = await getDb(); // TODO move up out.
+  const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ? order by exerciseName';
+  const params = [username, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
+  const exerciseReps = await db.all(sql, params);
+
+  // STEP 4: Query to get all planned reps data for month.
+  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE username=? AND datePlanned BETWEEN ? AND ? order by exerciseName';
+  const params2 = [username, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
+  const exerciseRepsPlanned = await db.all(sql2, params2);
+
+  // STEP 5: Loop and match exercise to each date now.
+  // Create an array of dates from startDate to endDate
+  const dateArray = [];
+  let currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    dateArray.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  // Map over every day from startDate to endDate
+  const data = dateArray.map((date) => {
+    const {
+      reps,
+      repsPlanned,
+      completedPlanned,
+      completedDaily
+    } = filterForDate(date, exerciseReps, exerciseRepsPlanned);
+
+    return { date, reps, repsPlanned, completedPlanned, completedDaily };
+  });
+  // console.log("DEBUG6: data", data);
+
+  return data;
+}
+
+// Given two sets of data, filter out just what we need for this date.
+// function filterForDate(exerciseReps: any[], exerciseRepsPlanned: any[], year: number, month: number, day: number) {
+function filterForDate(date: Date, exerciseReps: any[], exerciseRepsPlanned: any[]) {
+  // Day can be negative to pad front and over month to pad end.
+  // const date = new Date(year, month - 1, day);
+  const dateString = date.toISOString().split('T')[0];
+  // console.log("\nDEBUG4: dateString", dateString);
+
+  // STEP 1: Filter reps for this date and make hash.
+  const reps = exerciseReps.filter(rep => rep.timeDone.split('T')[0] === dateString);
+  // TODO make method.
+  // Make a temp hash of exerciseName to quantity.
+  const exerciseHash = reps.reduce((hash, { exerciseName, quantity }) => {
+    hash[exerciseName] = (hash[exerciseName] || 0) + quantity;
+    return hash;
+  }, {});
+
+  // STEP 2: Filter planned reps for this date and make hash.
+  const repsPlanned = exerciseRepsPlanned.filter(rep => rep.datePlanned === dateString);
+  const plannedExerciseHash = repsPlanned.reduce((hash, { exerciseName, quantity }) => {
+    hash[exerciseName] = (hash[exerciseName] || 0) + quantity;
+    return hash;
+  }, {});
+  // console.log("DEBUG7: exerciseHash", exerciseHash);
+  // console.log("DEBUG7: plannedExerciseHash", plannedExerciseHash);
+
+  // STEP 3: For every planned rep, subtract out the total reps done and see if goal achieved.
+  const completedPlanned = Object.keys(plannedExerciseHash).map(exerciseName => {
+    const plannedQuantity = plannedExerciseHash[exerciseName] || 0;
+    const doneQuantity = exerciseHash[exerciseName] || 0;
+    const completed = plannedQuantity - doneQuantity <= 0;
+    return { exerciseName, plannedQuantity, doneQuantity, remaining: plannedQuantity - doneQuantity, completed };
+  });
+  // console.log("DEBUG8: completedPlanned", completedPlanned);
+
+  // STEP 4: If we had any scheduled reps and all are done, then we completed the daily goal.
+  let completedDaily = undefined;
+  if (Object.keys(plannedExerciseHash).length > 0) {
+    completedDaily = !completedPlanned.some(({ remaining }) => remaining > 0);
+  }
+  // console.log("DEBUG8: completedDaily=", completedDaily);
+
+  // STEP 5: For each planned rep, see if it is completed yet.
+  const exerciseHashTemp = { ...exerciseHash };
+  repsPlanned.forEach(rep => {
+    rep.completed = exerciseHashTemp[rep.exerciseName] >= rep.quantity;
+    exerciseHashTemp[rep.exerciseName] -= rep.quantity;
+  });
+  console.log("DEBUG8: repsPlanned", repsPlanned);
+
+  // TODO Probably display only totals.
+
+  return { reps, repsPlanned, completedPlanned, completedDaily };
+}
+
+
 // Insert a new exercise repetition using Gemini 2.0 Functions.
 async function insertExerciseRepGemini(username: string, exerciseText: string) {
   console.log("DEBUG3: GoogleGenerativeAI imported");
@@ -132,6 +236,7 @@ async function insertExerciseRepGemini(username: string, exerciseText: string) {
   console.log("DEBUG4: STEP 2: Starting chat. ");
   const chat = generativeModel.startChat();
   // const prompt = `Username is Robin. Today is ${ new Date().toISOString() }  I just completed 30 mins swimming.`;
+  // Build up the full prompt we send to gemini. This is the input to the model.
   const prompt = `Username is ${username}. Today is ${new Date().toISOString()}  Exercise Text: ${exerciseText}`;
   console.log("DEBUG4: Generated prompt:", prompt);
   // Send the message to the model.
@@ -168,130 +273,19 @@ async function insertExerciseRepGemini(username: string, exerciseText: string) {
   }
 }
 
-// Grab all exercise data for the month and prep for display.
-async function getExerciseMonthData(username: string, month: number, year: number) {
-  // STEP 1: Build up a month of days.
-  // Get amount of days in this month.
-  console.log("getExerciseMonthData: month year = ", month, year);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  console.log("DEBUG4: daysInMonth", daysInMonth);
-  const days = new Array(daysInMonth).fill(0).map((_, i) => i + 1);
-
-  // STEP 2: Pad front and end days on calendar. make method just to get dates.
-  console.log("DEBUG1: Making calendar days now.");
-  // Get the day of week for each day map into our data.
-  const startDay = new Date(year, month-1, 1).getDay();
-  console.log("DEBUG4: startDay", startDay);
-
-  const daysToPad = Array.from({ length: startDay }, (_, i) => -startDay + i + 1);
-  let paddedDays = [...daysToPad, ...days];
-  // Pad end with number of days until end day.
-  const endDay = new Date(year, month, 0).getDay();
-  // console.log("DEBUG4: endDay", endDay);
-  const daysToPadEnd = Array.from({ length: 6 - endDay }, (_, i) => i + 1 + daysInMonth);
-  paddedDays = [...paddedDays, ...daysToPadEnd];
-  console.log("DEBUG4: DONE paddedDays = ", paddedDays);
-  const startDate = new Date(year, month-1, 1 - startDay);
-  const endDate = new Date(year, month-1, daysInMonth + (6 - endDay));
-  console.log("DEBUG4: startDate", startDate);
-  console.log("DEBUG4: endDate", endDate);
-  // todo use these instead.
-
-  // STEP 3: Query to get all done reps data for month.
-  const db = await getDb(); // TODO move up out.
-  const sql = 'SELECT * FROM exerciseReps WHERE userName=? AND timeDone BETWEEN ? AND ? order by timeDone, exerciseName';
-  const params = [username, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
-  const exerciseReps = await db.all(sql, params);
-  const fullQuery = sql.replace(/\?/g, () => JSON.stringify(params.shift()));
-  console.log("DEBUG5: fullQuery =", fullQuery);
-  // console.log("DEBUG5: exerciseReps=", exerciseReps);
-
-  // STEP 4: Query to get all planned reps data for month.
-  const sql2 = 'SELECT * FROM exerciseRepsPlanned WHERE username=? AND datePlanned BETWEEN ? AND ? order by datePlanned, exerciseName';
-  const params2 = [username, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]];
-  const exerciseRepsPlanned = await db.all(sql2, params2);
-  const fullQuery2 = sql2.replace(/\?/g, () => JSON.stringify(params2.shift()));
-  console.log("DEBUG6: fullQuery2 =", fullQuery2);
-  // console.log("DEBUG6: exerciseRepsPlanned=", exerciseRepsPlanned);
-
-  // STEP 5: Loop and match exercise to each date now.
-  // console.log("DEBUG6: month", month);
-  const data = paddedDays.map((day, index) => {
-    // TODO MAKE METHOD????
-    const date = new Date(year, month-1, day);
-    const dateString = date.toISOString().split('T')[0];
-    // console.log("\nDEBUG4: dateString", dateString);
-    const reps = exerciseReps.filter(rep => rep.timeDone.split('T')[0] === dateString);
-    const repsPlanned = exerciseRepsPlanned.filter(rep => rep.datePlanned === dateString);
-
-    // TODO make method.
-    // Make a temp hash of exerciseName to quantity.
-    const exerciseHash = reps.reduce((hash, { exerciseName, quantity }) => {
-      hash[exerciseName] = (hash[exerciseName] || 0) + quantity;
-      return hash;
-    }, {});
-    const plannedExerciseHash = repsPlanned.reduce((hash, { exerciseName, quantity }) => {
-      hash[exerciseName] = (hash[exerciseName] || 0) + quantity;
-      return hash;
-    }, {});
-    // console.log("DEBUG7: exerciseHash", exerciseHash);
-    // console.log("DEBUG7: plannedExerciseHash", plannedExerciseHash);
-
-    // For every planned rep, subtract out the total reps done and see if goal achieved.
-    const completedPlanned = Object.keys(plannedExerciseHash).map(exerciseName => {
-      const plannedQuantity = plannedExerciseHash[exerciseName] || 0;
-      const doneQuantity = exerciseHash[exerciseName] || 0;
-      return { exerciseName, plannedQuantity, doneQuantity, remaining: plannedQuantity - doneQuantity };
-    });
-    // console.log("DEBUG8: completedPlanned", completedPlanned);
-    // If we had any scheduled reps and all are done, then we completed the daily goal.
-    let completedDaily = undefined;
-    if (Object.keys(plannedExerciseHash).length > 0) {
-      completedDaily = !completedPlanned.some(({ remaining }) => remaining > 0);
-    }
-    // console.log("DEBUG8: completedDaily=", completedDaily);
-
-    return { date, reps, repsPlanned, completedPlanned, completedDaily };
-  });
-  // console.log("DEBUG6: data", data);
-
-  return data;
-}
-
 // Executable function code. Put it in a map keyed by the function name
 // so that you can call it once you get the name string from the model.
 const functions = {
-  insertExerciseRep: ({ username, exerciseName, quantity, timeDone }: {
+  insertExerciseRep: ({ username, exerciseName, quantity, quantityType, timeDone }: {
     username: string,
     exerciseName: string,
     quantity: number,
+    quantityType: string,
     timeDone: string
   }) => {
-    return insertExerciseRep(username, exerciseName, quantity, timeDone);
+    return insertExerciseRep(username, exerciseName, quantity, quantityType, timeDone);
   }
 };
-
-// Gemini test methods.
-async function setLightValues(brightness: number, colorTemp: string) {
-  // This mock API returns the requested lighting values
-
-  console.log("DEBUG5: Setting light values: brightness =", brightness, "color temperature =", colorTemp);
-  // TODO STUFFS
-
-  return {
-    brightness: brightness,
-    colorTemperature: colorTemp
-  };
-}
-
-async function insertExerciseRep(username: string, exerciseName: string, quantity: number, timeDone: string) {
-  const db = await getDb();
-  const result = await db.run(
-    'INSERT INTO exerciseReps (userName, exerciseName, quantity, timeDone) VALUES (?, ?, ?, ?)',
-    [username, exerciseName, quantity, timeDone]
-  );
-  console.log('SQL Exercise record created.');
-}
 
 // Declare our methods here with some helpful descriptions.
 const insertExerciseRepFunctionDeclaration = {
@@ -310,7 +304,11 @@ const insertExerciseRepFunctionDeclaration = {
       },
       quantity: {
         type: "NUMBER",
-        description: "The number of repetitions performed.",
+        description: "The number of repetitions performed, repetitions or minutes, if hours convert to minutes.",
+      },
+      quantityType: {
+        type: "STRING",
+        description: "The type for the quantity, generally either 'reps' or 'minutes' or 'laps' or 'miles'. ",
       },
       timeDone: {
         type: "STRING",
@@ -319,6 +317,15 @@ const insertExerciseRepFunctionDeclaration = {
     },
     required: ["username", "exerciseName", "quantity", "timeDone"],
   },
+}
+
+async function insertExerciseRep(username: string, exerciseName: string, quantity: number, quantityType: string, timeDone: string) {
+  const db = await getDb();
+  const result = await db.run(
+    'INSERT INTO exerciseReps (userName, exerciseName, quantity, quantityType, timeDone) VALUES (?, ?, ?, ?, ?)',
+    [username, exerciseName, quantity, quantityType, timeDone]
+  );
+  console.log('SQL Exercise record created.');
 }
 
 

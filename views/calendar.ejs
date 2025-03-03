@@ -62,6 +62,11 @@
             background-color: #ffb0c9;
         }
 
+        .completed-today {
+            background-color: #158715;
+        }
+
+
         /* Ensure the height adjusts to the content and shrink to fit the content */
         #exerciseFormContainer {
             border: 1px solid black;
@@ -77,75 +82,89 @@
 <div class="container">
 
     <div>
-    <h1>Exercise Calendar</h1>
+        <h1>Exercise Calendar</h1>
 
-    <h3> Month: <%= new Date(year, month - 1).toLocaleString('default', {month: 'long'}) %> <%= year %> </h3>
-    <table id="calendarTable">
-        <tr>
-            <th>Sun</th>
-            <th>Mon</th>
-            <th>Tue</th>
-            <th>Wed</th>
-            <th>Thu</th>
-            <th>Fri</th>
-            <th>Sat</th>
-        </tr>
-        <%
-        // Show our layout for done and planned exercises now.
-        function renderReps(reps, repsPlanned) {
-            let html = '';
-            if (reps && reps.length > 0) {
-                html = `
+        <h3> Month: <%= new Date(year, month - 1).toLocaleString('default', {month: 'long'}) %> <%= year %> </h3>
+        <table id="calendarTable">
+            <tr>
+                <th>Sun</th>
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+                <th>Sat</th>
+            </tr>
+            <%
+            // Show our layout for done and planned exercises now.
+            function renderReps(reps, repsPlanned) {
+                let html = '';
+                if (reps && reps.length > 0) {
+                    html = `
                 <ul>
                   ${reps.map(rep => `<li>${rep.quantity} ${rep.exerciseName}</li>`).join('')}
                 </ul>`;
-            }
+                }
 
-            if (!repsPlanned || repsPlanned.length === 0) return html;
-            html += `<p>
+                if (!repsPlanned || repsPlanned.length === 0) return html;
+                html += `<p>
             Planned:
             <span style="color: rgb(76,11,11);"> <br>
-                ${repsPlanned.map(rep => `${rep.quantity} ${rep.exerciseName} <br>`).join(' ')}
+            ${repsPlanned.map(rep => {
+                    const startTag = rep.completed ? '<s>' : '';
+                    const endTag = rep.completed ? '</s>' : '';
+                    return `${startTag}${rep.quantity} ${rep.exerciseName}${endTag} <br>`;
+                }).join(' ')}
             </span>
             </p>`;
 
-            return html;
-        }
-
-        cnt = 0;
-        const today = new Date();
-        const currentMonth = today.getMonth() + 1;
-        const currentYear = today.getFullYear();
-
-        // Loop over every calendar day and display.
-        days.forEach(date => {
-            const dateOn = date.date;
-            // console.log("DEBUG9: dateOn: ", dateOn);
-            const isTodayClass = dateOn.getDate() === today.getDate()
-            && dateOn.getMonth() + 1 === currentMonth
-            && dateOn.getFullYear() === currentYear ? 'current-date' : '';
-            // console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
-            let isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
-            if (isTodayClass !== '') {
-                isPastClass = '';
+                return html;
             }
-            let isCompletedDailyClass = '';
-            // Color all past days as green or red if completed or failed.
-            if (isPastClass !== '') {
-                isCompletedDailyClass = date.completedDaily === true ? 'completed-daily' : (date.completedDaily === false ? 'completed-daily-failed' : '');
-            }
-        %>
-        <td class="<%= isCompletedDailyClass %> <%= isPastClass %> <%= isTodayClass %> ">
-            <div class="day-number"><%= dateOn.getDate() || '' %></div>
-            <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
-        </td>
-        <% cnt++;
-        if (cnt % 7 === 0) { %>
-            </tr>
-        <tr>
-            <% }
-            }) %>
-    </table>
+
+            cnt = 0;
+            const today = new Date();
+            const currentMonth = today.getMonth() + 1;
+            const currentYear = today.getFullYear();
+
+            // Loop over every calendar day and display.
+            days.forEach(date => {
+                const dateOn = date.date;
+                // console.log("DEBUG9: dateOn: ", dateOn);
+                const isTodayClass = dateOn.getDate() === today.getDate()
+                && dateOn.getMonth() + 1 === currentMonth
+                && dateOn.getFullYear() === currentYear ? 'current-date' : '';
+                // console.log("DEBUG9: currentMonth month day year = ", currentMonth, dateOn.getMonth()+1, dateOn.getDate(), dateOn.getFullYear());
+                let isPastClass = new Date(dateOn.getFullYear(), dateOn.getMonth(), dateOn.getDate()) < today ? 'past-date' : '';
+                if (isTodayClass !== '') {
+                    isPastClass = '';
+                }
+                let isCompletedDailyClass = '';
+                // Color all past days as green or red if completed or failed.
+                if (isPastClass !== '') {
+                    isCompletedDailyClass = date.completedDaily === true ? 'completed-daily' : (date.completedDaily === false ? 'completed-daily-failed' : '');
+                }
+                // If today, and all exercise is done, dark green color.
+                if (isTodayClass !== '' && date.completedDaily === true) {
+                    isCompletedDailyClass = 'completed-today';
+                }
+            %>
+            <td class="<%= isCompletedDailyClass %> <%= isPastClass %> <%= isTodayClass %> ">
+                <div class="day-number"><%= dateOn.getDate() || '' %></div>
+                <div>
+                    <%
+                    if (isCompletedDailyClass === 'completed-today') { %>
+                        Congrats! You completed all your exercises today!
+                    <% } %>
+                </div>
+                <div class="reps-info"><%- renderReps(date.reps, date.repsPlanned) %></div>
+            </td>
+            <% cnt++;
+            if (cnt % 7 === 0) { %>
+                </tr>
+            <tr>
+                <% }
+                }) %>
+        </table>
     </div>
 
     <div id="exerciseFormContainer">
