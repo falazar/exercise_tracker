@@ -68,7 +68,7 @@ app.get('/exerciseReps3', (req, res) => {
 });
 
 
-// Serve the Calendar file.
+// Serve the Calendar ejs file.
 app.get('/exerciseReps', async (req, res) => {
   // Get the username from query parameters or default to "james"
   const username = (req.query.username || "james") as string;
@@ -208,7 +208,7 @@ function filterForDate(date: Date, exerciseReps: any[], exerciseRepsPlanned: any
     rep.completed = exerciseHashTemp[rep.exerciseName] >= rep.quantity;
     exerciseHashTemp[rep.exerciseName] -= rep.quantity;
   });
-  console.log("DEBUG8: repsPlanned", repsPlanned);
+  // console.log("DEBUG8: repsPlanned", repsPlanned);
 
   // TODO Probably display only totals.
 

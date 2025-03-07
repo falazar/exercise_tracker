@@ -168,13 +168,44 @@
     </div>
 
     <div id="exerciseFormContainer">
-        <form action="/exerciseReps" method="post">
-            <label for="username">Username: James </label>
-            <input type="hidden" id="username" name="username" value="james" required><br><br>
+        <form action="/exerciseReps" method="post" onsubmit="openPopup(event)">
+            <label for="username">Username: <%= username %> </label>
+            <input type="hidden" id="username" name="username" value="<%= username %>" required><br><br>
             What exercise did you do? <input type="text" id="exerciseText" name="exerciseText" required><br>
             Ex: I biked for 20 minutes, or I did 50 pushups at 8am<br>
             <button type="submit">Submit</button>
         </form>
+        <script>
+          function openPopup(event) {
+            event.preventDefault();
+            const form = event.target;
+            const url = form.action;
+            const width = 400;
+            const height = 200;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            const popup = window.open('', 'popup', `width=${width},height=${height},left=${left},top=${top}`);
+            const popupForm = popup.document.createElement('form');
+            popupForm.action = url;
+            popupForm.method = 'post';
+
+            Array.from(form.elements).forEach(element => {
+              if (element.name) {
+                const input = popup.document.createElement('input');
+                input.type = 'hidden';
+                input.name = element.name;
+                input.value = element.value;
+                popupForm.appendChild(input);
+              }
+            });
+
+            popup.document.body.appendChild(popupForm);
+            popupForm.submit();
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000); // Delay of 3 seconds
+          }
+        </script>
     </div>
 </div>
 </body>
